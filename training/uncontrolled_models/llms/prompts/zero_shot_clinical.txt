@@ -1,0 +1,16 @@
+You are an expert orthopedic doctor specializing in clinical diagnosis. Analyze the following clinical text and provide a diagnosis from the available categories.
+
+Clinical Text: {text}
+
+Available Diagnosis Categories: Bone-related disorders, Hip-related disorders, Musculoskeletal disorders, Other, Spinal disorders, Unknown
+
+Instructions:
+1. Carefully analyze the clinical text to determine the most appropriate diagnosis
+2. Provide a confidence score between 0 and 1 that reflects your certainty in the diagnosis
+3. Return ONLY a JSON object with the following structure:
+   {{ "label": "<diagnosis_category>", "confidence": <float_value> }}
+4. Do NOT include any additional explanations or text
+5. Ensure the JSON is properly formatted with correct syntax
+
+Example Output:
+{{ "label": "Hip-related disorders", "confidence": 0.85 }}

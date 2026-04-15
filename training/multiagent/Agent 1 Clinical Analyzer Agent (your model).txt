@@ -1,0 +1,7 @@
+FUNCTION ClinicalAnalyzerAgent(text, language) -> Prediction:
+    model = load_model_for(language)
+    probs = model.predict_proba(text)
+    label = argmax(probs)
+    top_k = topK(probs, k=3)
+    confidence = max(probs)
+    RETURN Prediction(label, top_k, probs, confidence)

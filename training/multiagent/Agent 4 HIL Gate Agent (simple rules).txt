@@ -1,0 +1,15 @@
+#Human in loop
+FUNCTION HILGateAgent(prediction, evidence, langcheck) -> HILDecision:
+    IF prediction.confidence < 0.60:
+        RETURN REQUIRE_REVIEW, "Low model confidence", HIGH
+
+    IF evidence.support_level == CONTRADICTED:
+        RETURN REQUIRE_REVIEW, "Prediction contradicted by text evidence", HIGH
+
+    IF langcheck.lang_risk == HIGH:
+        RETURN REQUIRE_REVIEW, "High language consistency risk", MED
+
+    IF evidence.support_level == WEAK OR langcheck.lang_risk == MED:
+        RETURN REQUIRE_REVIEW, "Weak evidence or medium language risk", MED
+
+    RETURN AUTO_ACCEPT, "High confidence + supported evidence + low language risk", LOW

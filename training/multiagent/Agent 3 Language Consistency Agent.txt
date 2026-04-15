@@ -1,0 +1,38 @@
+For en: always LOW (or skip).
+For hi/pa: detect script + medical term mismatch + weird mixing.
+
+FUNCTION LanguageConsistencyAgent(text, language, prediction, evidence_rationale) -> LangCheck:
+    IF language == "en":
+        RETURN LangCheck(LOW, [], "N/A")
+
+    issues = []
+    risk_score = 0
+
+    // Script check
+    IF language == "hi" AND NOT contains_devanagari(text):
+        issues.append("Hindi text missing Devanagari script")
+        risk_score += 2
+
+    IF language == "pa" AND NOT contains_gurmukhi(text):
+        issues.append("Punjabi text missing Gurmukhi script")
+        risk_score += 2
+
+    // Mixed language / romanization
+    IF high_romanized_ratio(text):
+        issues.append("High romanized content may reduce model reliability")
+        risk_score += 1
+
+    // Medical term ambiguity (small lexicon)
+    IF predicted_label_requires_terms(prediction.label) AND NOT contains_any(text, term_lexicon[prediction.label]):
+        issues.append("Expected medical terms not found for predicted label")
+        risk_score += 1
+
+    IF risk_score >= 3:
+        risk = HIGH
+    ELSE IF risk_score == 2:
+        risk = MED
+    ELSE:
+        risk = LOW
+
+    suggestion = generate_suggestion(issues)
+    RETURN LangCheck(risk, issues, suggestion)

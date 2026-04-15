@@ -1,0 +1,145 @@
+Key idea (simple)
+
+Rules first → fast, deterministic, cheap
+
+LLM second → used only when rules are uncertain
+
+This avoids over-reliance on LLMs and looks clinically responsible
+
+🔹 Updated Logic (High-level)
+
+Apply rule-based symptom matching
+
+If rules give clear decision → stop
+
+If rules are uncertain (WEAK) → call LLM once
+
+Merge results into final evidence judgment
+
+🧠 Why this is strong (you can say this in viva)
+
+Rules ensure interpretability
+
+LLM adds semantic understanding
+
+Single LLM call → low cost, low risk
+
+Fully aligned with clinical safety
+
+🧩 Updated Pseudocode (FINAL VERSION)
+Symptom Dictionary (small, extendable)
+symptom_dictionary = {
+  "spinal_disorder": {
+    "en": ["back pain", "lower back", "spine", "numbness", "radiating pain", "leg weakness"],
+    "hi": ["कमर दर्द", "पीठ दर्द", "रीढ़", "सुन्नता", "दर्द फैलना"],
+    "pa": ["ਕਮਰ ਦਰਦ", "ਰੀੜ੍ਹ", "ਸੁੰਨਤਾ", "ਦਰਦ ਫੈਲਣਾ"]
+  },
+
+  "fracture": {
+    "en": ["fracture", "fall", "swelling", "severe pain", "x-ray", "trauma"],
+    "hi": ["फ्रैक्चर", "गिरना", "सूजन", "तेज दर्द", "एक्स-रे"],
+    "pa": ["ਫ੍ਰੈਕਚਰ", "ਡਿੱਗਣਾ", "ਸੂਜਨ", "ਤੇਜ਼ ਦਰਦ", "ਐਕਸ-ਰੇ"]
+  },
+
+  "musculoskeletal_disorder": {
+    "en": ["joint pain", "stiffness", "movement difficulty", "muscle pain"],
+    "hi": ["जोड़ों का दर्द", "जकड़न", "हिलने में कठिनाई", "मांसपेशियों का दर्द"],
+    "pa": ["ਜੋੜਾਂ ਦਾ ਦਰਦ", "ਜਕੜਨ", "ਹਿਲਣ ਵਿੱਚ ਮੁਸ਼ਕਲ"]
+  }
+}
+
+🔹 Updated EvidenceCheckerAgent (Hybrid)
+FUNCTION EvidenceCheckerAgent(text, language, prediction) -> EvidenceCheck:
+
+    key_terms = symptom_dictionary[prediction.label][language]
+    matched_terms = []
+
+    FOR term IN key_terms:
+        IF term EXISTS IN text:
+            matched_terms.append(term)
+
+    hit_count = LENGTH(matched_terms)
+
+    // ---- Rule-based decision ----
+    IF hit_count >= 3:
+        support = SUPPORTED
+        rationale = "Multiple key symptoms found: " + join(matched_terms)
+        missing_questions = []
+        RETURN EvidenceCheck(support, rationale, missing_questions)
+
+    ELSE IF hit_count == 0:
+        support = CONTRADICTED
+        rationale = "No expected symptoms for " + prediction.label + " found in text."
+        missing_questions = propose_questions(prediction.label)
+        RETURN EvidenceCheck(support, rationale, missing_questions)
+
+    // ---- Uncertain case → call LLM ----
+    ELSE:
+        llm_result = LLM_EvidenceCheck(text, prediction.label)
+
+        support = llm_result.support_level
+        rationale = llm_result.rationale
+        missing_questions = llm_result.missing_questions
+
+        RETURN EvidenceCheck(support, rationale, missing_questions)
+
+🔹 LLM Evidence Check (Single Call Only)
+FUNCTION LLM_EvidenceCheck(text, predicted_label):
+
+    PROMPT = """
+    You are a clinical evidence verification assistant.
+
+    Task:
+    - Check whether the following clinical note supports the diagnosis: {predicted_label}
+    - Base your judgment ONLY on the given text.
+    - Do NOT invent symptoms.
+
+    Clinical Note:
+    {text}
+
+    Output format (strict):
+    Support Level: SUPPORTED / WEAK / CONTRADICTED
+    Rationale: short explanation quoting symptoms if present
+    Missing Questions: list up to 3 clarification questions
+    """
+
+    RESPONSE = call_LLM(PROMPT)
+
+    PARSE RESPONSE INTO:
+        support_level
+        rationale
+        missing_questions
+
+    RETURN {support_level, rationale, missing_questions}
+
+🔹 Example Output (for thesis clarity)
+Example 1: Clear (Rules only)
+
+Input (Hindi):
+
+"मरीज को कमर में तेज दर्द और पैर में सुन्नता है"
+
+Matched: ["कमर दर्द", "सुन्नता"]
+
+Hit count = 2 → WEAK
+
+LLM triggered
+
+LLM Output:
+
+Support: SUPPORTED
+
+Rationale: Symptoms consistent with spinal nerve compression
+
+Missing Questions: MRI report?
+
+Example 2: Contradicted
+
+Input (Punjabi):
+
+"ਮਰੀਜ਼ ਨੂੰ ਘੁੱਟਨੇ ਵਿੱਚ ਹਲਕਾ ਦਰਦ ਹੈ"
+
+Prediction: Fracture
+Matched: none
+
+➡️ CONTRADICTED, no LLM call
